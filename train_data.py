@@ -56,6 +56,6 @@ for (pattern_sentence, tag) in xy:
 X_train = np.array(X_train)
 y_train = np.array(y_train)
 
-print("🎉 Phase 1 Complete! Data matrices successfully generated.")
+print("Phase 1 Complete! Data matrices successfully generated.")
 print(f"Input Matrix Shape (X_train): {X_train.shape} -> ({len(xy)} sentences, {len(all_words)} words each)")
 print(f"Output Target Shape (y_train): {y_train.shape} -> ({len(xy)} corresponding category index assignments)")

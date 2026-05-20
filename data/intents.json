@@ -2,94 +2,398 @@
   "intents": [
     {
       "tag": "greeting",
-      "patterns": ["Hi", "Hello", "Hey there", "Is anyone there?", "Good day", "Good morning", "Anyone online?", "Hello assistant"],
-      "responses": ["Hello! I am MindEase, your AI space for mental wellness reflection. How are you holding up today?"]
+      "patterns": [
+        "Hi",
+        "Hello",
+        "Hey",
+        "Aoa",
+        "Asalamualaikum",
+        "Anyone there?",
+        "Good morning",
+        "Good evening",
+        "Hey chatbot",
+        "I need someone to talk to"
+      ],
+      "responses": [
+        "Hello. I'm here to listen without judging you. What's been on your mind lately?",
+        "Hi. I'm glad you reached out today. How have things been feeling for you recently?",
+        "Walaikum Assalam. You can talk freely here. What's been bothering you?"
+      ]
     },
+
     {
       "tag": "goodbye",
-      "patterns": ["Bye", "See you later", "Goodbye", "I am leaving", "Talk to you later", "Exit", "Quit"],
-      "responses": ["Goodbye. Please remember to be gentle with yourself. I am always here if you need to pause and reflect."]
+      "patterns": [
+        "Bye",
+        "Goodbye",
+        "Talk later",
+        "I am leaving",
+        "Khuda hafiz",
+        "See you later"
+      ],
+      "responses": [
+        "Take care of yourself today. Even small steps matter more than you think.",
+        "I'm glad you talked today. Come back anytime you need support or someone to listen.",
+        "Khuda Hafiz. Try to be gentle with yourself today."
+      ]
     },
+
     {
       "tag": "thanks",
-      "patterns": ["Thanks", "Thank you", "That helps", "Awesome", "Thank you for listening", "Appreciate it", "You've been helpful"],
-      "responses": [
-        "You're very welcome. Taking time to process your feelings is a powerful step.",
-        "I'm glad to be here for you. Your mental wellness matters deeply."
-      ]
-    },
-    {
-      "tag": "anxiety_somatic",
       "patterns": [
-        "My heart is racing and I can't breathe", "I feel a tight chest sensation", "I am shaking and sweating", 
-        "Having a sudden panic attack", "I feel physically hyperventilating", "My hands are trembling", "I feel dizzy and anxious"
+        "Thank you",
+        "Thanks",
+        "That helped",
+        "I appreciate it",
+        "You helped me feel better"
       ],
       "responses": [
-        "It sounds like your body's fight-or-flight response is highly active right now. Let's ground ourselves: lower your shoulders, unclench your jaw, and lengthen your next exhale. You are safe in this physical space."
+        "You do not have to handle everything alone. I'm glad talking helped a little.",
+        "I'm really glad you shared your thoughts instead of keeping them bottled up.",
+        "You're welcome. Reaching out when things feel heavy is actually a strong thing to do."
       ]
     },
+
     {
-      "tag": "anxiety_cognitive",
+      "tag": "panic_attack",
       "patterns": [
-        "My mind won't stop racing with worry", "I am overthinking everything", "I am terrified of the future", 
-        "Constantly expecting the worst outcome", "I feel an overwhelming sense of dread", "I'm trapped in a worry loop"
+        "I think I am having a panic attack",
+        "My chest feels tight",
+        "I cannot breathe",
+        "My heart is racing",
+        "I feel shaky",
+        "I feel like something bad will happen",
+        "I feel dizzy and scared"
       ],
       "responses": [
-        "Anxiety tends to pull our minds into future scenarios we cannot control. Let's try to gently bring your focus back to the present. What is one concrete thing you can see right in front of you?"
+        "That sounds really overwhelming right now. Try focusing only on the next few seconds instead of everything at once. Can you place both feet on the floor and slowly breathe in through your nose and out through your mouth?",
+        "Panic can feel frightening, but it usually rises and falls like a wave. Some people find cold water on their hands calming, while others focus on naming objects around them. Would you like to try grounding yourself together?",
+        "Your body seems to be in stress mode right now. You do not need to solve every worry immediately. Let's slow things down together. What triggered this feeling today?"
       ]
     },
+
     {
-      "tag": "depression_emotional",
+      "tag": "overthinking",
       "patterns": [
-        "I feel so sad", "I have been crying all day for no reason", "Everything feels totally hopeless", 
-        "I am so lonely and isolated", "I feel miserable and deeply down", "I feel completely empty inside", "I feel completely numb"
+        "I overthink everything",
+        "My thoughts won't stop",
+        "I keep worrying",
+        "I replay conversations in my head",
+        "My brain never shuts off",
+        "I think too much"
       ],
       "responses": [
-        "I'm so sorry you are feeling this heavy weight. Depression can steal your energy and distort your perspective. Please know that surviving today, even if it's just breathing through it, is enough."
+        "Overthinking can make even small problems feel huge. Sometimes the mind keeps searching for certainty when it's exhausted. What kind of thoughts keep repeating in your head most often?",
+        "A lot of people overthink more when they are stressed, tired, or emotionally hurt. Have these thoughts been connected to studies, family, friendships, or your future?",
+        "Instead of fighting every thought, sometimes it helps to pause and write them down somewhere. Getting them out of your head can reduce the pressure a little."
       ]
     },
+
     {
-      "tag": "depression_behavioral",
+      "tag": "night_anxiety",
       "patterns": [
-        "I don't have the energy to get out of bed", "I stopped caring about my hobbies", "I've been isolating myself from friends", 
-        "I can't concentrate on my classes", "I have zero motivation to do anything anymore"
+        "I cannot sleep because of anxiety",
+        "My mind races at night",
+        "I stay awake worrying",
+        "I overthink before sleeping",
+        "I hate nighttime because of my thoughts"
       ],
       "responses": [
-        "When depression saps your energy, even minor tasks can feel like climbing a mountain. Give yourself permission to do things poorly or slowly today. Taking care of yourself comes first."
+        "Nighttime can make worries feel much louder. Your brain may be tired but still stuck trying to solve everything. Have you been under a lot of stress lately?",
+        "Some people calm their mind with soft background sounds, Quran recitation, journaling, or slow breathing before bed. Have you found anything that helps even a little?",
+        "You do not need to figure your whole life out tonight. Sometimes the goal is simply helping your mind rest enough to get through tomorrow."
       ]
     },
+
     {
-      "tag": "sleep_issues",
+      "tag": "academic_pressure",
       "patterns": [
-        "I can't sleep", "I have insomnia", "My thoughts keep me awake at night", 
-        "I am tired but my mind won't shut off", "I woke up in the middle of the night", "I have terrible sleep patterns",
-        "I've been tossing and turning for hours", "My sleep schedule is completely ruined"
+        "Studies are stressing me out",
+        "I am scared of failing",
+        "Board exams are stressing me",
+        "My grades make me anxious",
+        "I feel pressured by studies",
+        "University pressure is too much"
       ],
       "responses": [
-        "Restless nights are challenging. If you've been in bed for more than 20 minutes without sleeping, try getting up, moving to a dimly lit room, and doing a quiet activity until you feel tired.",
-        "When racing thoughts keep you awake, try a 'brain dump': grab a piece of paper and write down everything you are worrying about to signal to your brain that it's safe to rest."
+        "Academic pressure can become exhausting, especially when it feels connected to your future or family expectations. What part feels most overwhelming right now?",
+        "A lot of students feel like their worth depends entirely on grades. That pressure can become mentally draining. Have you been able to rest properly recently?",
+        "When stress builds up for too long, even simple tasks start feeling impossible. Maybe focus on one small task instead of the entire workload today."
       ]
     },
+
     {
-      "tag": "academic_burnout",
+      "tag": "family_pressure",
       "patterns": [
-        "I am completely exhausted by university assignments", "I am burning out from exams", "The academic pressure is too much", 
-        "I feel like a failure because of my grades", "I am physically and mentally drained from studying", "Too much course stress",
-        "I feel stressed", "I'm so stressed out", "I feel highly stressed about everything"
+        "My family pressures me",
+        "My parents expect too much",
+        "I feel controlled at home",
+        "My family does not understand me",
+        "I feel stressed because of family"
       ],
       "responses": [
-        "Academic burnout is completely valid, especially when balancing intensive course loads. Your fundamental worth is not tied to your GPA or productivity. Can you give yourself permission to step away from your desk for 15 minutes?"
+        "Family pressure can feel especially heavy when you care deeply about making people proud. What kind of expectations are affecting you the most?",
+        "Sometimes people around us do not realize how much pressure they are creating. That does not make your feelings invalid. How long have you been carrying this stress?",
+        "Feeling misunderstood by family can become emotionally exhausting. Is there anyone at home you feel even slightly comfortable talking to?"
       ]
     },
+
     {
-      "tag": "crisis",
+      "tag": "loneliness",
       "patterns": [
-        "I want to hurt myself", "I don't want to live anymore", "Suicide", "I want to end my life", 
-        "I am planning to end it", "I wish I was dead", "Cutting myself", "Self harm", "I want to kill myself"
+        "I feel alone",
+        "Nobody understands me",
+        "I have no one to talk to",
+        "I feel disconnected",
+        "I feel invisible",
+        "I feel left out"
       ],
       "responses": [
-        "CRITICAL_OVERRIDE: Please know that you are not alone and there is support available right now. Please reach out to a professional or a helpline immediately. You can call or text 988 (The Suicide & Crisis Lifeline) for free, confidential, 24/7 support. Your life matters. Please connect with them."
+        "Feeling emotionally alone can hurt deeply, even when people are around you. What has been the hardest part of this feeling lately?",
+        "Thank you for opening up about this. A lot of people hide loneliness behind pretending everything is fine. How long have you been feeling this way?",
+        "Sometimes loneliness is not about being physically alone, but about not feeling understood. Do you usually keep your feelings to yourself?"
+      ]
+    },
+
+    {
+      "tag": "low_self_esteem",
+      "patterns": [
+        "I hate myself",
+        "I feel worthless",
+        "I am not good enough",
+        "I feel useless",
+        "Everyone is better than me",
+        "I am a failure"
+      ],
+      "responses": [
+        "It sounds like you have been carrying a lot of self-criticism lately. What happened recently that made these feelings stronger?",
+        "When people are emotionally exhausted, their inner voice often becomes much harsher than reality. Would you speak to a friend the same way you speak to yourself?",
+        "Your struggles do not erase your worth as a person. Sometimes comparison and pressure can completely distort how we see ourselves."
+      ]
+    },
+
+    {
+      "tag": "motivation_issues",
+      "patterns": [
+        "I have no motivation",
+        "I cannot get myself to do anything",
+        "I feel lazy all the time",
+        "I do not feel productive",
+        "I cannot focus on tasks"
+      ],
+      "responses": [
+        "Sometimes lack of motivation is actually mental exhaustion rather than laziness. Have you been under constant stress recently?",
+        "When the brain feels overwhelmed, even basic tasks can feel huge. Instead of trying to fix everything today, maybe focus on one very small step first.",
+        "Motivation often returns after action rather than before it. Is there one tiny task you think you could handle today without overwhelming yourself?"
+      ]
+    },
+
+    {
+      "tag": "burnout",
+      "patterns": [
+        "I feel burnt out",
+        "I am emotionally exhausted",
+        "I cannot keep going like this",
+        "Everything feels draining",
+        "I am mentally tired"
+      ],
+      "responses": [
+        "Burnout can make your mind and body feel completely drained. Resting does not mean you are weak or lazy. How long have you been pushing yourself this hard?",
+        "When people ignore stress for too long, burnout often shows up as exhaustion, irritability, and emotional numbness. Have you had any real break recently?",
+        "Your mind may be asking for recovery, not more pressure. Even small moments of rest and routine can slowly help your energy return."
+      ]
+    },
+
+    {
+      "tag": "relationship_stress",
+      "patterns": [
+        "I had a fight with someone",
+        "My relationship is stressing me",
+        "I got rejected",
+        "Someone hurt me emotionally",
+        "My friend ignored me",
+        "I feel heartbroken"
+      ],
+      "responses": [
+        "Relationship stress can affect your whole mood and energy, especially when the connection mattered deeply to you. What happened?",
+        "It makes sense that you feel hurt. Emotional pain can stay with us for a long time, especially after conflict or rejection. What part hurt the most?",
+        "Try not to blame yourself for every part of the situation immediately. Relationships are usually more complicated than one person being entirely at fault."
+      ]
+    },
+
+    {
+      "tag": "social_anxiety",
+      "patterns": [
+        "I get nervous around people",
+        "I hate social situations",
+        "I feel judged by everyone",
+        "I cannot talk confidently",
+        "I avoid people because of anxiety"
+      ],
+      "responses": [
+        "Social anxiety can make even normal interactions feel stressful and exhausting. Do you mostly worry about being judged, embarrassing yourself, or saying the wrong thing?",
+        "A lot of people with social anxiety replay conversations afterward and criticize themselves too much. Has that been happening to you too?",
+        "Avoiding situations can feel safer temporarily, but it sometimes makes the fear grow stronger over time. Small social steps can slowly build confidence again."
+      ]
+    },
+
+    {
+      "tag": "health_anxiety",
+      "patterns": [
+        "I think something is wrong with me",
+        "I keep worrying about my health",
+        "I panic over small symptoms",
+        "I constantly search symptoms online",
+        "I think I have a serious illness"
+      ],
+      "responses": [
+        "Health anxiety can make normal body sensations feel alarming and dangerous. Has this fear been affecting your daily routine recently?",
+        "When anxiety is high, the brain often stays alert for danger and starts overanalyzing physical sensations. That can become very exhausting mentally.",
+        "Constantly searching symptoms online can sometimes increase panic instead of helping. What symptoms or fears have been worrying you most?"
+      ]
+    },
+
+    {
+      "tag": "grief",
+      "patterns": [
+        "I lost someone",
+        "Someone passed away",
+        "I am grieving",
+        "I miss someone badly",
+        "I cannot move on from a loss"
+      ],
+      "responses": [
+        "I'm really sorry you're going through this. Grief can affect emotions, sleep, focus, and energy in ways people often underestimate. What has been the hardest part for you lately?",
+        "Losing someone important can leave a huge emotional gap in everyday life. There is no perfect timeline for grief. How have you been coping so far?",
+        "Sometimes grief comes in waves. Certain memories, places, or moments can suddenly make the pain feel fresh again."
+      ]
+    },
+
+    {
+      "tag": "anger_frustration",
+      "patterns": [
+        "I get angry easily",
+        "I feel irritated all the time",
+        "I cannot control my anger",
+        "Everything annoys me",
+        "I feel frustrated constantly"
+      ],
+      "responses": [
+        "Anger is often connected to stress, hurt, pressure, or emotional exhaustion underneath. Has something been building up for a while?",
+        "Sometimes people stay in survival mode for so long that even small things start feeling unbearable. What situations trigger your anger most often?",
+        "Taking a pause before reacting can help more than forcing yourself to stay calm instantly. Some people release frustration through walking, exercise, journaling, or quiet time alone."
+      ]
+    },
+
+    {
+      "tag": "sleep_problems",
+      "patterns": [
+        "I cannot sleep",
+        "I have insomnia",
+        "I wake up multiple times",
+        "I feel restless at night",
+        "I am tired but cannot sleep"
+      ],
+      "responses": [
+        "Sleep problems can make anxiety and stress feel even worse during the day. Has your sleep schedule been irregular lately?",
+        "Sometimes the body feels exhausted while the mind stays alert and restless. What usually keeps you awake the most?",
+        "Small nighttime habits can help slowly improve sleep, like reducing screen time before bed, dimming lights, or listening to calming sounds."
+      ]
+    },
+
+    {
+      "tag": "coping_methods",
+      "patterns": [
+        "How do I calm down",
+        "How can I feel better",
+        "What should I do for anxiety",
+        "I need help calming myself",
+        "How do I stop stressing"
+      ],
+      "responses": [
+        "Different coping methods help different people. Some people calm down by walking outside, journaling, listening to calming sounds, deep breathing, stretching, talking to someone, or distracting themselves with a show or game for a while. What usually helps you feel even slightly calmer?",
+        "You do not need to fix every problem immediately. Sometimes the goal is simply lowering the intensity of the feeling little by little. Would you rather try something calming, distracting, or continue talking?",
+        "A small reset can help your nervous system settle. Maybe sip cold water slowly, wash your face, or step away from social media for a bit. Tiny actions can interrupt anxious spirals."
+      ]
+    },
+
+    {
+      "tag": "religious_comfort",
+      "patterns": [
+        "I feel distant from Allah",
+        "I feel spiritually empty",
+        "Religion used to comfort me",
+        "I feel guilty spiritually"
+      ],
+      "responses": [
+        "A lot of people go through periods where they feel spiritually disconnected, especially during stress or emotional exhaustion. That does not make you a bad person.",
+        "Sometimes emotional struggles make it hard to feel peace even during prayer or عبادت. Being gentle with yourself matters too.",
+        "For some people, small spiritual habits help create calm again, like quiet dua, Quran recitation, or simply taking a peaceful moment alone."
+      ]
+    },
+
+    {
+      "tag": "self_isolation",
+      "patterns": [
+        "I avoid everyone",
+        "I stay in my room all day",
+        "I stopped talking to people",
+        "I isolate myself",
+        "I do not want to meet anyone"
+      ],
+      "responses": [
+        "Sometimes isolation feels safer when emotions become overwhelming. Has being alone been helping you recharge, or making you feel worse over time?",
+        "People often withdraw when they feel emotionally exhausted or misunderstood. You are not strange for feeling this way.",
+        "Even small human connection can help a little sometimes, even if it is just messaging one trusted person."
+      ]
+    },
+
+    {
+      "tag": "crisis_support",
+      "patterns": [
+        "I want to hurt myself",
+        "I do not want to live",
+        "I feel unsafe with myself",
+        "I want everything to end",
+        "I feel hopeless and trapped"
+      ],
+      "responses": [
+        "I'm really sorry you're hurting this much right now. You deserve support from a real person nearby. Please try reaching out to someone you trust or contact a mental health helpline in Pakistan like Umang at 0311-7786264. If you are in immediate danger, contact local emergency services or go to a trusted adult or family member nearby.",
+        "You do not have to go through this alone. Right now, your safety matters most. Try not to isolate yourself completely. Is there someone nearby you feel safe contacting today?",
+        "I'm glad you said something instead of staying alone with these feelings. Please reach out to a trusted person or professional support service immediately."
+      ]
+    },
+
+    {
+      "tag": "daily_checkin",
+      "patterns": [
+        "Check in with me",
+        "Can we talk",
+        "I just need someone to listen",
+        "I want to vent",
+        "Can I share something"
+      ],
+      "responses": [
+        "Of course. You can take your time. What's been weighing on your mind today?",
+        "I'm listening. You do not need to explain everything perfectly.",
+        "Go ahead. What has today been like emotionally for you?"
       ]
     }
+  ],
+
+  "fallback_responses": [
+    "I'm listening. Can you tell me a little more about what's been on your mind?",
+    "That sounds important. What has this experience been like for you?",
+    "You do not have to explain everything perfectly. Take your time.",
+    "I'm here with you. What feels hardest right now?",
+    "Sometimes talking things through slowly can help. What happened today?"
+  ],
+
+  "conversation_starters": [
+    "How has your stress level been recently?",
+    "What has been taking up most of your mental energy lately?",
+    "Have you been getting enough rest recently?",
+    "What usually helps you feel calmer during difficult days?",
+    "Is there something you've been keeping to yourself for a long time?"
   ]
 }

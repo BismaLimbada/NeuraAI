@@ -4,6 +4,20 @@ import numpy as np
 import tensorflow as tf
 import streamlit as st
 from preprocess import tokenize, stem, bag_of_words
+import nltk
+
+def download_nltk():
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except LookupError:
+        nltk.download('punkt')
+
+    try:
+        nltk.data.find('tokenizers/punkt_tab')
+    except LookupError:
+        nltk.download('punkt_tab')
+
+download_nltk()
 
 # 1. Page Configuration & Custom Styling
 st.set_page_config(page_title="Neura AI", page_icon="🌸", layout="centered")

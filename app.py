@@ -213,9 +213,6 @@ CONTEXT_SETTERS = {
 }
 
 with st.sidebar:
-    # Direct Link Button to full GitHub repository root
-    st.link_button("📂 View Full GitHub Source", "https://github.com/BismaLimbada/ChatBot", use_container_width=True)
-    
     st.subheader("🤖 Agent Internal Model State")
 
     st.write(

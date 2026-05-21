@@ -143,6 +143,20 @@ def load_bot_resources():
 
 model, all_words, tags, intents = load_bot_resources()
 
+# 2. Optimized Resource Loading
+@st.cache_resource
+def load_bot_resources():
+    # Load via legacy string parsing to match different Keras versions
+    model = tf.keras.models.load_model('mental_health_model.keras', compile=False, safe_mode=False)
+
+    with open("data_mappings.json", "r") as f:
+        mappings = json.load(f)
+
+    with open("data/intents.json", "r") as f:
+        intents = json.load(f)
+
+    return model, mappings["all_words"], mappings["tags"], intents
+    
 # --- MODEL-BASED REFLEX AGENT: STATE ARCHITECTURE SETUP ---
 if "agent_internal_state" not in st.session_state:
     st.session_state.agent_internal_state = {

@@ -6,19 +6,24 @@ import streamlit as st
 from preprocess import tokenize, stem, bag_of_words
 
 # 1. Page Configuration & Custom Styling
-st.set_page_config(page_title="MindEase AI", page_icon="🧠", layout="centered")
+st.set_page_config(page_title="Neura AI", page_icon="🌸", layout="centered")
 
-# Inject a tiny bit of CSS to make the chat container look cohesive and pad the bottom input area
-st.markdown("""
+# Enforces a clean, minimalist layout and changes the assistant avatar to pastel pink
+st.html("""
     <style>
         .block-container { padding-top: 2rem; padding-bottom: 5rem; }
         h1 { margin-bottom: 0px; }
+        /* Style the native avatar container to be a beautiful pastel pink */
+        [data-testid="stChatMessageAvatarAssistant"] {
+            background-color: #F7D6DB !important;
+            color: #000000 !important;
+        }
     </style>
-""", unsafe_allow_html=True)
+""")
 
 # Main Header Design
-st.title("🧠 MindEase AI")
-st.caption("An empathetic, context-aware framework for mental health awareness & support.")
+st.title("🌸 Neura AI")
+st.caption("Your empathetic, context-aware framework for mental health awareness & support.")
 st.write("---")
 
 # 2. Optimized Resource Loading
@@ -36,7 +41,7 @@ model, all_words, tags, intents = load_bot_resources()
 # 3. Session Memory State Initializations
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "assistant", "content": "Hello! I am MindEase. How are you holding up today?"}
+        {"role": "assistant", "content": "Hello! I am Neura. How are you holding up today?"}
     ]
 
 if "active_context" not in st.session_state:
@@ -44,10 +49,18 @@ if "active_context" not in st.session_state:
 
 # Sidebar layout for project utilities (keeps main UI hyper-focused)
 with st.sidebar:
-    st.header("⚙️ Chat Options")
-    st.write("Need a fresh start? Use the button below to wipe conversation history safely.")
-    if st.button("🧹 Clear Chat History", use_container_width=True):
-        st.session_state.messages = [{"role": "assistant", "content": "Hello! I am MindEase. How are you holding up today?"}]
+    st.subheader("Reach Out")
+    st.markdown("""
+    If things feel overwhelming, remember that you don't have to carry it all alone. 
+    
+    Consider reaching out to someone you trust—whether it's a close friend, a family member, a mentor, or a professional who can offer a safe space to listen. Sharing a heavy thought is often the first step toward feeling a bit lighter.
+    """)
+    
+    st.divider()
+    
+    st.subheader("Session Control")
+    if st.button("Clear Conversation History", use_container_width=True):
+        st.session_state.messages = [{"role": "assistant", "content": "Hello! I am Neura. How are you holding up today?"}]
         st.session_state.active_context = None
         st.rerun()
 
@@ -76,7 +89,7 @@ CONTEXT_SETTERS = {
 
 # 5. Core Processing & Interactive Pipeline
 
-# CRITICAL FIX: Always render ALL historic chat elements FIRST before capturing new inputs
+# Always render ALL historic chat elements FIRST before capturing new inputs
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])

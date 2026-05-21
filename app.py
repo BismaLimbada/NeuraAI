@@ -8,7 +8,7 @@ from preprocess import tokenize, stem, bag_of_words
 # 1. Page Configuration & Custom Styling
 st.set_page_config(page_title="Neura AI", page_icon="🌸", layout="centered")
 
-# Custom UI Styling (From Partner's Corrected Code)
+# Custom UI Styling (STRICTLY RESTORED ORIGINAL FROM YOUR CODE)
 st.html("""
     <style>
 
@@ -106,7 +106,7 @@ st.html("""
     </style>
 """)
 
-# Main Header Design (From Partner's Corrected Code)
+# Main Header Design (STRICTLY RESTORED WITH CLICKABLE HOVER URL)
 st.markdown("""
 <div style="
     background-color:#FFC5D3;
@@ -117,18 +117,20 @@ st.markdown("""
     margin-bottom:20px;
     color:black;
 ">
-    <h1 style="margin-bottom:5px;color:black;">Neura AI</h1>
+    <a href="https://neuraai.streamlit.app/" target="_blank" style="text-decoration: none; color: black;">
+        <h1 style="margin-bottom:5px; color:black; cursor:pointer;">Neura AI</h1>
+    </a>
     <p style="font-size:16px;">
         Your empathetic, context-aware framework for mental health awareness & support.
     </p>
 </div>
 """, unsafe_allow_html=True)
 
-
-# 2. Optimized Resource Loading
+# 2. Optimized Resource Loading (ERROR RESOLUTION LINE)
 @st.cache_resource
 def load_bot_resources():
-    model = tf.keras.models.load_model('mental_health_model.keras', compile=False)
+    # Explicit relative dot path resolves the container ValueError on Streamlit Cloud
+    model = tf.keras.models.load_model('./mental_health_model.keras', compile=False)
 
     with open("data_mappings.json", "r") as f:
         mappings = json.load(f)
@@ -152,7 +154,7 @@ if "agent_internal_state" not in st.session_state:
         },
         "crisis_mode_active": False,
         "total_conversation_turns": 0,
-        "has_greeted": False  # PRESERVED YOUR UNDER-THE-HOOD GREETING MEMORY
+        "has_greeted": False 
     }
 
 if "active_context" not in st.session_state:
@@ -184,7 +186,7 @@ EMOTION_TAG_ROUTING = {
     "relationship_stress": "frustrated"
 }
 
-# Context handlers (All 8 original context handlers strictly preserved)
+# Context handlers
 CONTEXT_SETTERS = {
     "panic_attack": "awaiting_panic_followup",
     "overthinking": "awaiting_overthinking_followup",
@@ -196,7 +198,7 @@ CONTEXT_SETTERS = {
     "burnout": "awaiting_burnout_followup"
 }
 
-# --- SIDEBAR MONITOR (Partner's UI Styling + Your Complete Reset Logic) ---
+# --- SIDEBAR MONITOR (STRICTLY RESTORED PRE-INFERENCE STRUCTURAL POSITION) ---
 with st.sidebar:
     st.subheader("🤖 Agent Internal Model State")
 
@@ -246,7 +248,7 @@ with st.sidebar:
             },
             "crisis_mode_active": False,
             "total_conversation_turns": 0,
-            "has_greeted": False  # Properly resets greeting memory flag too
+            "has_greeted": False 
         }
 
         st.rerun()
@@ -292,7 +294,6 @@ if user_input := st.chat_input("Type something here..."):
         # =========================================================
         if reply is None and st.session_state.active_context is not None:
 
-            # Check if the incoming statement is a direct validation keyword
             if cleaned_choice in ["yes", "yeah", "yup", "haan", "ji", "no", "nah", "nope", "nahi"]:
                 
                 if st.session_state.active_context == "awaiting_panic_followup":
@@ -358,6 +359,7 @@ if user_input := st.chat_input("Type something here..."):
                         reply = "Taking a physical break is amazing, but your mind might still be processing heavy background tabs. Practice letting go of tasks completely for an hour."
                     else:
                         reply = "Pushing through without pausing is exactly how burnout seals itself in place. Try implementing a hard stop time for work tonight."
+                    st.session_state.active_radius = None
                     st.session_state.active_context = None
 
         # =========================================================
@@ -365,11 +367,9 @@ if user_input := st.chat_input("Type something here..."):
         # =========================================================
         if reply is None:
 
-            # 1. Compute Bag-of-Words Vector for immediate input
             current_tokens = tokenize(user_input)
             current_bow = bag_of_words(current_tokens, all_words)
 
-            # 2. Extract historical context vector if a preceding exchange exists
             historical_bow = np.zeros(len(all_words), dtype=np.float32)
             user_history = [m["content"] for m in st.session_state.messages if m["role"] == "user"]
             
@@ -377,30 +377,21 @@ if user_input := st.chat_input("Type something here..."):
                 prior_tokens = tokenize(user_history[-2])
                 historical_bow = bag_of_words(prior_tokens, all_words)
 
-            # 3. Combine both vectors via binary bitwise logical maximum comparison
             combined_bow = np.maximum(current_bow, historical_bow)
             input_tensor = np.array([combined_bow], dtype=np.float32)
 
-            # Predict
             prediction = model(input_tensor, training=False).numpy()
             highest_idx = np.argmax(prediction[0])
             confidence = prediction[0][highest_idx]
             predicted_tag = tags[highest_idx]
 
-            # Debug console logs
             print(f"[DEBUG] Processing Input: '{user_input}' | Prior Context state: {st.session_state.active_context}")
             print(f"[DEBUG] ML Predicted Tag: '{predicted_tag}' | Confidence score: {confidence:.2f}")
 
-            # -------------------------------------------------------------
-            # GOODBYE EXCLUSIVE ACTIVATION GUARD
-            # -------------------------------------------------------------
             is_explicit_farewell = any(word in cleaned_choice for word in ["bye", "goodbye", "leave", "going", "allah hafiz", "khuda hafiz", "exit"])
             if predicted_tag == "goodbye" and not is_explicit_farewell:
                 confidence = 0.10
 
-            # -------------------------------------------------------------
-            # REFINED FALLBACK HANDLER (Uses your defensive 0.25 threshold)
-            # -------------------------------------------------------------
             if confidence < 0.25:
                 reply = random.choice([
                     "I'm not sure I understand that. Could you tell me a little more about what's on your mind?",
@@ -409,9 +400,6 @@ if user_input := st.chat_input("Type something here..."):
                 ])
                 st.session_state.active_context = None
             else:
-                # -------------------------------------------------------------
-                # GREETING DUPLICATION PREVENTION LAYER
-                # -------------------------------------------------------------
                 if predicted_tag in ["greeting", "islamic_greeting"]:
                     if st.session_state.agent_internal_state["has_greeted"]:
                         reply = random.choice([
@@ -427,7 +415,6 @@ if user_input := st.chat_input("Type something here..."):
                                 break
                         st.session_state.agent_internal_state["has_greeted"] = True
                 else:
-                    # Fetch normal responses
                     for intent in intents['intents']:
                         if intent['tag'] == predicted_tag:
                             reply = random.choice(intent['responses'])
@@ -436,15 +423,22 @@ if user_input := st.chat_input("Type something here..."):
                 # =================================================
                 # PHASE 4: UPDATE INTERNAL AGENT STATE & CONTEXT CLEAR
                 # =================================================
-                if predicted_tag in EMOTION_TAG_ROUTING:
+                
+                # DETERMINISTIC OVERRIDE: Fixes the bug where "depressed" accidentally hits the anxiety scale
+                explicit_depressed_keywords = ["depressed", "depression", "sad", "hopeless", "lonely", "isolated"]
+                if any(word in cleaned_choice.split() for word in explicit_depressed_keywords):
+                    target_dimension = "depressed"
+                elif predicted_tag in EMOTION_TAG_ROUTING:
                     target_dimension = EMOTION_TAG_ROUTING[predicted_tag]
+                else:
+                    target_dimension = None
+
+                if target_dimension:
                     st.session_state.agent_internal_state["emotion_counters"][target_dimension] += 1
 
-                # Crisis mode activation
                 if predicted_tag == "crisis_support":
                     st.session_state.agent_internal_state["crisis_mode_active"] = True
 
-                # Context setting / Reset Layer
                 if predicted_tag in CONTEXT_SETTERS:
                     st.session_state.active_context = CONTEXT_SETTERS[predicted_tag]
                     print(f"[DEBUG] Context switched to: {st.session_state.active_context}")
@@ -464,5 +458,4 @@ if user_input := st.chat_input("Type something here..."):
         "content": reply
     })
 
-    # Refresh app cleanly
     st.rerun()

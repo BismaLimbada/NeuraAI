@@ -419,7 +419,7 @@ if user_input := st.chat_input("Type something here..."):
             if predicted_tag == "goodbye" and not is_explicit_farewell:
                 confidence = 0.10
 
-            if confidence < 0.25:
+            if confidence < 0.70:
                 reply = random.choice([
                     "I'm not sure I understand that. Could you tell me a little more about what's on your mind?",
                     "I want to make sure I understand you properly, but I didn't quite catch that. What's been going on?",

@@ -10,11 +10,17 @@
         "Good morning",
         "Good evening",
         "Hey chatbot",
-        "I need someone to talk to"
+        "I need someone to talk to",
+        "Are you there?",
+        "Hi there",
+        "Can we talk?",
+        "I need help",
+        "Just wanted to say hi"
       ],
       "responses": [
         "Hello. I'm here to listen without judging you. What's been on your mind lately?",
-        "Hi. I'm glad you reached out today. How have things been feeling for you recently?"
+        "Hi. I'm glad you reached out today. How have things been feeling for you recently?",
+        "I'm here. Take a deep breath. What would you like to talk about today?"
       ]
     },
     {
@@ -29,9 +35,63 @@
         "Walaikum Assalam. I'm glad you reached out today. How have things been feeling for you?"
       ]
     },
-
-
-
+    {
+      "tag": "affirmative_response",
+      "patterns": [
+        "Yes",
+        "Yeah",
+        "Yup",
+        "Sure",
+        "I do",
+        "Haan",
+        "Ji"
+      ],
+      "responses": [
+        "I hear you. Do you want to expand on that a bit more?",
+        "Okay. How does that make you feel?",
+        "I understand. What do you think is the next step?"
+      ]
+    },
+    {
+      "tag": "negative_response",
+      "patterns": [
+        "No",
+        "Nah",
+        "Nope",
+        "I do not",
+        "Nahi"
+      ],
+      "responses": [
+        "That is completely okay. We don't have to talk about anything you aren't ready for.",
+        "Understood. Is there something else you would rather focus on?",
+        "Alright. I am just here to listen whenever you are ready."
+      ]
+    },
+    {
+      "tag": "neutral_acknowledgment",
+      "patterns": [
+        "I don't know",
+        "Maybe",
+        "Okay",
+        "Ok",
+        "Hmm",
+        "I guess",
+        "Not sure",
+        "We will see",
+        "Make sense",
+        "I suppose so",
+        "jee",
+        "nothing",
+        "what",
+        "deep breathing"
+      ],
+      "responses": [
+        "Take your time. You don't need to have all the answers right now.",
+        "That's completely fair. It's okay to sit with the uncertainty for a bit.",
+        "Whenever you feel ready to explore that more, I'm right here.",
+        "I hear you. Sometimes just acknowledging how confusing things are is a good first step."
+      ]
+    },
     {
       "tag": "goodbye",
       "patterns": [
@@ -48,7 +108,6 @@
         "Khuda Hafiz. Try to be gentle with yourself today."
       ]
     },
-
     {
       "tag": "thanks",
       "patterns": [
@@ -64,7 +123,6 @@
         "You're welcome. Reaching out when things feel heavy is actually a strong thing to do."
       ]
     },
-
     {
       "tag": "panic_attack",
       "patterns": [
@@ -82,7 +140,6 @@
         "Your body seems to be in stress mode right now. You do not need to solve every worry immediately. Let's slow things down together. What triggered this feeling today?"
       ]
     },
-
     {
       "tag": "overthinking",
       "patterns": [
@@ -99,7 +156,6 @@
         "Instead of fighting every thought, sometimes it helps to pause and write them down somewhere. Getting them out of your head can reduce the pressure a little."
       ]
     },
-
     {
       "tag": "night_anxiety",
       "patterns": [
@@ -115,7 +171,6 @@
         "You do not need to figure your whole life out tonight. Sometimes the goal is simply helping your mind rest enough to get through tomorrow."
       ]
     },
-
     {
       "tag": "academic_pressure",
       "patterns": [
@@ -132,7 +187,6 @@
         "When stress builds up for too long, even simple tasks start feeling impossible. Maybe focus on one small task instead of the entire workload today."
       ]
     },
-
     {
       "tag": "family_pressure",
       "patterns": [
@@ -148,7 +202,6 @@
         "Feeling misunderstood by family can become emotionally exhausting. Is there anyone at home you feel even slightly comfortable talking to?"
       ]
     },
-
     {
       "tag": "loneliness",
       "patterns": [
@@ -165,7 +218,6 @@
         "Sometimes loneliness is not about being physically alone, but about not feeling understood. Do you usually keep your feelings to yourself?"
       ]
     },
-
     {
       "tag": "low_self_esteem",
       "patterns": [
@@ -182,7 +234,6 @@
         "Your struggles do not erase your worth as a person. Sometimes comparison and pressure can completely distort how we see ourselves."
       ]
     },
-
     {
       "tag": "motivation_issues",
       "patterns": [
@@ -198,7 +249,6 @@
         "Motivation often returns after action rather than before it. Is there one tiny task you think you could handle today without overwhelming yourself?"
       ]
     },
-
     {
       "tag": "burnout",
       "patterns": [
@@ -214,7 +264,6 @@
         "Your mind may be asking for recovery, not more pressure. Even small moments of rest and routine can slowly help your energy return."
       ]
     },
-
     {
       "tag": "relationship_stress",
       "patterns": [
@@ -231,7 +280,6 @@
         "Try not to blame yourself for every part of the situation immediately. Relationships are usually more complicated than one person being entirely at fault."
       ]
     },
-
     {
       "tag": "social_anxiety",
       "patterns": [
@@ -247,7 +295,6 @@
         "Avoiding situations can feel safer temporarily, but it sometimes makes the fear grow stronger over time. Small social steps can slowly build confidence again."
       ]
     },
-
     {
       "tag": "health_anxiety",
       "patterns": [
@@ -263,13 +310,16 @@
         "Constantly searching symptoms online can sometimes increase panic instead of helping. What symptoms or fears have been worrying you most?"
       ]
     },
-
     {
       "tag": "grief",
       "patterns": [
         "I lost someone",
         "Someone passed away",
         "I am grieving",
+        "my grandmother passed",
+        "my grandfather died",
+        "I lost a family member",
+        "my friend died",
         "I miss someone badly",
         "I cannot move on from a loss"
       ],
@@ -279,7 +329,6 @@
         "Sometimes grief comes in waves. Certain memories, places, or moments can suddenly make the pain feel fresh again."
       ]
     },
-
     {
       "tag": "anger_frustration",
       "patterns": [
@@ -295,7 +344,6 @@
         "Taking a pause before reacting can help more than forcing yourself to stay calm instantly. Some people release frustration through walking, exercise, journaling, or quiet time alone."
       ]
     },
-
     {
       "tag": "sleep_problems",
       "patterns": [
@@ -311,7 +359,6 @@
         "Small nighttime habits can help slowly improve sleep, like reducing screen time before bed, dimming lights, or listening to calming sounds."
       ]
     },
-
     {
       "tag": "coping_methods",
       "patterns": [
@@ -327,7 +374,6 @@
         "A small reset can help your nervous system settle. Maybe sip cold water slowly, wash your face, or step away from social media for a bit. Tiny actions can interrupt anxious spirals."
       ]
     },
-
     {
       "tag": "religious_comfort",
       "patterns": [
@@ -342,7 +388,6 @@
         "For some people, small spiritual habits help create calm again, like quiet dua, Quran recitation, or simply taking a peaceful moment alone."
       ]
     },
-
     {
       "tag": "self_isolation",
       "patterns": [
@@ -358,7 +403,6 @@
         "Even small human connection can help a little sometimes, even if it is just messaging one trusted person."
       ]
     },
-
     {
       "tag": "crisis_support",
       "patterns": [
@@ -366,7 +410,14 @@
         "I do not want to live",
         "I feel unsafe with myself",
         "I want everything to end",
-        "I feel hopeless and trapped"
+        "I feel hopeless and trapped",
+        "I can't take this anymore",
+        "Please make it stop",
+        "I want to give up",
+        "There is no point anymore",
+        "I don't see a way out of this",
+        "I am tired of living",
+        "Everything would be better if I was not here"
       ],
       "responses": [
         "I'm really sorry you're hurting this much right now. You deserve support from a real person nearby. Please try reaching out to someone you trust or contact a mental health helpline in Pakistan like Umang at 0311-7786264. If you are in immediate danger, contact local emergency services or go to a trusted adult or family member nearby.",
@@ -374,7 +425,6 @@
         "I'm glad you said something instead of staying alone with these feelings. Please reach out to a trusted person or professional support service immediately."
       ]
     },
-
     {
       "tag": "daily_checkin",
       "patterns": [
@@ -391,7 +441,6 @@
       ]
     }
   ],
-
   "fallback_responses": [
     "I'm listening. Can you tell me a little more about what's been on your mind?",
     "That sounds important. What has this experience been like for you?",
@@ -399,7 +448,6 @@
     "I'm here with you. What feels hardest right now?",
     "Sometimes talking things through slowly can help. What happened today?"
   ],
-
   "conversation_starters": [
     "How has your stress level been recently?",
     "What has been taking up most of your mental energy lately?",

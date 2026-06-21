@@ -22,10 +22,9 @@ download_nltk()
 # 1. Page Configuration & Custom Styling
 st.set_page_config(page_title="Neura AI", page_icon="🌸", layout="centered")
 
-# Custom UI Styling (STRICTLY RESTORED ORIGINAL FROM YOUR CODE)
+# Custom UI Styling
 st.html("""
     <style>
-
         /* Main spacing */
         .block-container {
             padding-top: 2rem;
@@ -86,7 +85,6 @@ st.html("""
             color: black !important;
         }
 
-    
         /* Progress bar color */
         .stProgress > div > div > div > div {
             background-color: #ffb6c1 !important;
@@ -120,7 +118,7 @@ st.html("""
     </style>
 """)
 
-# Main Header Design (STRICTLY RESTORED WITH CLICKABLE HOVER URL)
+# Main Header Design
 st.markdown("""
 <div style="
     background-color:#FFC5D3;
@@ -140,7 +138,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# 2. Optimized Resource Loading (ERROR RESOLUTION LINE)
+# 2. Optimized Resource Loading
 @st.cache_resource
 def load_bot_resources():
     model = tf.keras.models.load_model(
@@ -373,7 +371,6 @@ if user_input := st.chat_input("Type something here..."):
                         reply = "Taking a physical break is amazing, but your mind might still be processing heavy background tabs. Practice letting go of tasks completely for an hour."
                     else:
                         reply = "Pushing through without pausing is exactly how burnout seals itself in place. Try implementing a hard stop time for work tonight."
-                    st.session_state.active_radius = None
                     st.session_state.active_context = None
 
         # =========================================================
@@ -387,7 +384,8 @@ if user_input := st.chat_input("Type something here..."):
             historical_bow = np.zeros(len(all_words), dtype=np.float32)
             user_history = [m["content"] for m in st.session_state.messages if m["role"] == "user"]
             
-            if len(user_history) > 1:
+            # Bypassing historical memory loop for short user inputs
+            if len(user_history) > 1 and len(current_tokens) > 2:
                 prior_tokens = tokenize(user_history[-2])
                 historical_bow = bag_of_words(prior_tokens, all_words)
 
@@ -399,6 +397,20 @@ if user_input := st.chat_input("Type something here..."):
             confidence = prediction[0][highest_idx]
             predicted_tag = tags[highest_idx]
 
+            # =========================================================
+            # DETERMINISTIC OVERRIDE FOR SHORT WORDS
+            # =========================================================
+            SHORT_WORD_ROUTER = {
+                "yes": "affirmative_response", "yeah": "affirmative_response", "yup": "affirmative_response", "haan": "affirmative_response", "ji": "affirmative_response",
+                "no": "negative_response", "nah": "negative_response", "nope": "negative_response", "nahi": "negative_response",
+                "okay": "neutral_acknowledgment", "ok": "neutral_acknowledgment", "nothing": "neutral_acknowledgment", "what": "neutral_acknowledgment", "jee": "neutral_acknowledgment", 
+                "good": "neutral_acknowledgment", "fine": "neutral_acknowledgment"
+            }
+            
+            if cleaned_choice in SHORT_WORD_ROUTER:
+                predicted_tag = SHORT_WORD_ROUTER[cleaned_choice]
+                confidence = 1.0  # Force it to 100% so it passes the interceptor guard
+
             print(f"[DEBUG] Processing Input: '{user_input}' | Prior Context state: {st.session_state.active_context}")
             print(f"[DEBUG] ML Predicted Tag: '{predicted_tag}' | Confidence score: {confidence:.2f}")
 
@@ -406,7 +418,8 @@ if user_input := st.chat_input("Type something here..."):
             if predicted_tag == "goodbye" and not is_explicit_farewell:
                 confidence = 0.10
 
-            if confidence < 0.50:
+            # Strict low-confidence and empty array interceptor
+            if confidence < 0.38 or (np.sum(combined_bow) == 0 and cleaned_choice not in SHORT_WORD_ROUTER):
                 reply = random.choice([
                     "I'm not sure I understand that. Could you tell me a little more about what's on your mind?",
                     "I want to make sure I understand you properly, but I didn't quite catch that. What's been going on?",

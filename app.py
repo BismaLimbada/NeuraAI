@@ -3,15 +3,15 @@ import json
 import numpy as np
 import tensorflow as tf
 import streamlit as st
-from preprocess import tokenize, stem, bag_of_words
+from preprocess import tokenize, stem, embed_sentence, load_embedder
 import nltk
 
+# --- NLTK INITIALIZATION ---
 def download_nltk():
     try:
         nltk.data.find('tokenizers/punkt')
     except LookupError:
         nltk.download('punkt')
-
     try:
         nltk.data.find('tokenizers/punkt_tab')
     except LookupError:
@@ -19,155 +19,208 @@ def download_nltk():
 
 download_nltk()
 
-# 1. Page Configuration & Custom Styling
+# =========================================================
+# ADVANCED NLP ENGINE: SEMANTIC INTENT MATCHER (VECTOR SEARCH)
+# =========================================================
+class SemanticIntentMatcher:
+    def __init__(self, intents_path="data/intents.json"):
+        with open(intents_path, "r") as f:
+            self.intents_data = json.load(f)
+
+        self.patterns = []
+        self.pattern_embeddings = []
+        self.pattern_to_intent = []  # Maps each pattern directly to its intent dict
+
+        self._precompute_pattern_embeddings()
+
+    def _precompute_pattern_embeddings(self):
+        """Embeds every single pattern in intents.json once at startup."""
+        for intent in self.intents_data["intents"]:
+            for pattern in intent["patterns"]:
+                # Use your existing USE embedder from preprocess.py
+                vector = embed_sentence(pattern)
+                self.patterns.append(pattern)
+                self.pattern_embeddings.append(vector)
+                self.pattern_to_intent.append(intent)
+
+        self.pattern_embeddings = np.array(self.pattern_embeddings)
+
+    def match(self, user_input, threshold=0.42):
+        """Finds the semantically closest pattern using Cosine Similarity."""
+        user_vector = embed_sentence(user_input)
+
+        # Cosine Similarity = Dot Product (since USE embeddings are L2 normalized)
+        similarities = np.dot(self.pattern_embeddings, user_vector)
+        best_idx = np.argmax(similarities)
+        best_score = similarities[best_idx]
+
+        if best_score >= threshold:
+            return self.pattern_to_intent[best_idx], best_score
+        return None, best_score
+
+
+# =========================================================
+# CONTEXTUAL YES / NO / TOPIC-CHANGE RESOLVER
+# =========================================================
+# Why this exists:
+# When the bot is inside a followup (e.g. "Would you like to try a grounding
+# exercise?"), we do NOT want to ask "which of the 28 intents is this?" — a
+# short reply like "not really" or "yeah kind of" will compete against
+# academic_pressure / burnout / etc. patterns and often loses, which is why
+# the bot used to forget what it had just asked and fall back or reset.
+#
+# Instead, this resolver ONLY decides between three options: agree, disagree,
+# or "the user moved on to something else" — using (1) a broad keyword table
+# and (2) similarity against a small anchor set, rather than the full intent
+# matcher. This keeps the model-based reflex agent's "memory" of the active
+# followup intact across a much wider range of real phrasing.
+
+AGREEMENT_KEYWORDS = [
+    "yes", "yeah", "yep", "yup", "sure", "ok", "okay", "alright", "fine",
+    "definitely", "absolutely", "of course", "i do", "i guess so", "kind of",
+    "kinda", "sort of", "a bit", "somewhat", "i think so", "probably",
+    "haan", "ji", "ji haan", "bilkul", "theek hai",
+]
+
+DISAGREEMENT_KEYWORDS = [
+    "no", "nah", "nope", "not really", "not at all", "i do not", "i don't",
+    "never", "not exactly", "not particularly", "don't think so",
+    "nahi", "bilkul nahi", "nahi yar",
+]
+
+# Small, curated anchor phrases used ONLY for the yes/no/neutral decision -
+# kept deliberately separate from intents.json patterns so this stays fast
+# and isn't diluted by unrelated intents.
+YES_ANCHORS = [
+    "yes", "yes i would like that", "sure that sounds good", "i think so",
+    "okay let's try it", "kind of, yes",
+]
+NO_ANCHORS = [
+    "no", "not really", "no I would rather not", "not right now",
+    "I don't think so", "no thank you",
+]
+
+
+@st.cache_resource
+def _load_context_anchors():
+    """Precompute embeddings for the yes/no anchor phrases once per process."""
+    load_embedder()
+    yes_vecs = np.array([embed_sentence(p) for p in YES_ANCHORS])
+    no_vecs = np.array([embed_sentence(p) for p in NO_ANCHORS])
+    return yes_vecs, no_vecs
+
+
+def classify_yes_no(user_input, cleaned_choice):
+    """
+    Decides whether a reply -- given while a followup context is active --
+    means agreement, disagreement, or "topic changed / unclear".
+
+    Returns one of: "yes", "no", "unclear", plus a confidence score.
+    """
+    # 1. Fast keyword pass (substring match, not exact match, so phrases like
+    #    "not really" or "yeah i guess" are caught, not just single words).
+    if any(kw in cleaned_choice for kw in DISAGREEMENT_KEYWORDS):
+        return "no", 1.0
+    if any(kw in cleaned_choice for kw in AGREEMENT_KEYWORDS):
+        return "yes", 1.0
+
+    # 2. Semantic fallback against the small anchor sets (not the full
+    #    28-intent matcher) so unrelated topics don't dilute the score.
+    yes_vecs, no_vecs = _load_context_anchors()
+    user_vector = embed_sentence(user_input)
+
+    yes_score = float(np.max(np.dot(yes_vecs, user_vector)))
+    no_score = float(np.max(np.dot(no_vecs, user_vector)))
+
+    CONTEXT_THRESHOLD = 0.35  # lower than the global 0.42 since this is a
+                              # binary decision, not a 28-way one
+    if max(yes_score, no_score) < CONTEXT_THRESHOLD:
+        return "unclear", max(yes_score, no_score)
+
+    return ("yes", yes_score) if yes_score >= no_score else ("no", no_score)
+
+
+# =========================================================
+# NLTK RULE-BASED NEGATION LAYER (ESCAPE HATCH)
+# =========================================================
+def user_is_correcting_bot(user_input, active_context):
+    """
+    Detects if the user is saying something like "I didn't talk about social anxiety"
+    to break out of loop traps instantly.
+    """
+    if not active_context:
+        return False
+
+    tokens = [t.lower() for t in tokenize(user_input)]
+    negations = {"not", "don't", "dont", "didnt", "didn't", "never", "wrong", "stop", "no", "false", "incorrect"}
+
+    # If the user uses a negation word
+    if any(neg in tokens for neg in negations):
+        # Extract the current topic from context name (e.g. awaiting_social_anxiety_followup -> ["social", "anxiety"])
+        context_topic = active_context.replace("awaiting_", "").replace("_followup", "")
+        context_keywords = context_topic.split("_")
+
+        # If they mention any keyword related to the current topic context, they are correcting the bot
+        if any(keyword in tokens for keyword in context_keywords):
+            return True
+
+    return False
+
+
+# =========================================================
+# STREAMLIT UI & RESOURCES
+# =========================================================
 st.set_page_config(page_title="Neura AI", page_icon="🌸", layout="centered")
 
 # Custom UI Styling
 st.html("""
     <style>
-        /* Main spacing */
-        .block-container {
-            padding-top: 2rem;
-            padding-bottom: 5rem;
-        }
-
-        /* Center title */
-        h1 {
-            text-align: center;
-            margin-bottom: 0px;
-        }
-
-        /* Center caption/tagline */
-        div[data-testid="stCaptionContainer"] {
-            text-align: center;
-        }
-
-        /* Assistant avatar background BLACK */
-        [data-testid="stChatMessageAvatarAssistant"] {
-            background-color: black !important;
-            color: #ffb6c1 !important;
-        }
-
-        /* User avatar same as chatbot avatar */
-        [data-testid="stChatMessageAvatarUser"] {
-            background-color: black !important;
-            color: #ffb6c1 !important;
-        }
-        
-        /* User message text color BLACK */
-        [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) p {
-            color: black !important;
-        }
-
-        /* User chat bubble DARKER BABY PINK */
-        [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
-            background-color: #FFC5D3;
-            border-radius: 15px;
-            padding: 10px;
-        }
-
-        /* Assistant chat bubble */
-        [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
-            border-radius: 15px;
-            padding: 10px;
-        }
-
-        /* Reset button BABY PINK */
-        .stButton > button {
-            background-color: #FFC5D3 !important;
-            color: black !important;
-            border: 3px solid #ff9fbc !important;
-            font-weight: 600;
-        }
-
-        .stButton > button:hover {
-            background-color: #FFC5D3 !important;
-            color: black !important;
-        }
-
-        /* Progress bar color */
-        .stProgress > div > div > div > div {
-            background-color: #ffb6c1 !important;
-        }
-
-        /* Full chat input box baby pink */
-        [data-testid="stChatInput"] {
-            background-color: #FFC5D3 !important;
-            border-radius: 15px !important;
-            border: 2px solid #ff9fbc !important;
-            padding: 8px !important;
-        }
-
-        /* Input container */
-        [data-testid="stChatInput"] > div {
-            background-color: #FFC5D3 !important;
-            border-radius: 15px !important;
-        }
-        
-        /* Actual text input area */
-        [data-testid="stChatInput"] textarea {
-            background-color: #FFC5D3 !important;
-            color: black !important;
-        }
-
-        /* Placeholder text */
-        [data-testid="stChatInput"] textarea::placeholder {
-            color: black !important;
-            opacity: 1 !important;
-        }
+        .block-container { padding-top: 2rem; padding-bottom: 5rem; }
+        h1 { text-align: center; margin-bottom: 0px; }
+        div[data-testid="stCaptionContainer"] { text-align: center; }
+        [data-testid="stChatMessageAvatarAssistant"] { background-color: black !important; color: #ffb6c1 !important; }
+        [data-testid="stChatMessageAvatarUser"] { background-color: black !important; color: #ffb6c1 !important; }
+        [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) p { color: black !important; }
+        [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) { background-color: #FFC5D3; border-radius: 15px; padding: 10px; }
+        [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) { border-radius: 15px; padding: 10px; }
+        .stButton > button { background-color: #FFC5D3 !important; color: black !important; border: 3px solid #ff9fbc !important; font-weight: 600; }
+        .stButton > button:hover { background-color: #FFC5D3 !important; color: black !important; }
+        .stProgress > div > div > div > div { background-color: #ffb6c1 !important; }
+        [data-testid="stChatInput"] { background-color: #FFC5D3 !important; border-radius: 15px !important; border: 2px solid #ff9fbc !important; padding: 8px !important; }
+        [data-testid="stChatInput"] > div { background-color: #FFC5D3 !important; border-radius: 15px !important; }
+        [data-testid="stChatInput"] textarea { background-color: #FFC5D3 !important; color: black !important; }
+        [data-testid="stChatInput"] textarea::placeholder { color: black !important; opacity: 1 !important; }
     </style>
 """)
 
 # Main Header Design
 st.markdown("""
-<div style="
-    background-color:#FFC5D3;
-    padding:20px;
-    border:3px solid #ff9fbc;
-    border-radius:20px;
-    text-align:center;
-    margin-bottom:20px;
-    color:black;
-">
+<div style="background-color:#FFC5D3; padding:20px; border:3px solid #ff9fbc; border-radius:20px; text-align:center; margin-bottom:20px; color:black;">
     <a href="https://neuraai.streamlit.app/" target="_blank" style="text-decoration: none; color: black;">
         <h1 style="margin-bottom:5px; color:black; cursor:pointer;">Neura AI</h1>
     </a>
-    <p style="font-size:16px;">
-        Your empathetic, context-aware framework for mental health awareness & support.
-    </p>
+    <p style="font-size:16px;">Your empathetic, context-aware framework for mental health awareness & support.</p>
 </div>
 """, unsafe_allow_html=True)
 
-# 2. Optimized Resource Loading
+# Optimized Resource Loading
 @st.cache_resource
 def load_bot_resources():
-    model = tf.keras.models.load_model(
-        "mental_health_model.keras",
-        compile=False
-    )
-
-    with open("data_mappings.json", "r") as f:
-        mappings = json.load(f)
-
+    load_embedder()  # Load Universal Sentence Encoder
+    matcher = SemanticIntentMatcher("data/intents.json")
     with open("data/intents.json", "r") as f:
         intents = json.load(f)
+    return matcher, intents
 
-    return model, mappings["all_words"], mappings["tags"], intents
-
-model, all_words, tags, intents = load_bot_resources()
+matcher, intents = load_bot_resources()
 
 # --- MODEL-BASED REFLEX AGENT: STATE ARCHITECTURE SETUP ---
 if "agent_internal_state" not in st.session_state:
     st.session_state.agent_internal_state = {
-        "emotion_counters": {
-            "anxious": 0,
-            "depressed": 0,
-            "exhausted": 0,
-            "frustrated": 0
-        },
+        "emotion_counters": {"anxious": 0, "depressed": 0, "exhausted": 0, "frustrated": 0},
         "crisis_mode_active": False,
         "total_conversation_turns": 0,
-        "has_greeted": False 
+        "has_greeted": False
     }
 
 if "active_context" not in st.session_state:
@@ -176,123 +229,70 @@ if "active_context" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Emotion routing map
+# Emotion mapping
 EMOTION_TAG_ROUTING = {
-    "panic_attack": "anxious",
-    "overthinking": "anxious",
-    "night_anxiety": "anxious",
-    "social_anxiety": "anxious",
-    "health_anxiety": "anxious",
-    "sleep_problems": "anxious",
-
-    "loneliness": "depressed",
-    "low_self_esteem": "depressed",
-    "grief": "depressed",
-    "self_isolation": "depressed",
-
-    "motivation_issues": "exhausted",
-    "burnout": "exhausted",
-    "academic_pressure": "exhausted",
-
-    "anger_frustration": "frustrated",
-    "family_pressure": "frustrated",
-    "relationship_stress": "frustrated"
+    "panic_attack": "anxious", "overthinking": "anxious", "night_anxiety": "anxious",
+    "social_anxiety": "anxious", "health_anxiety": "anxious", "sleep_problems": "anxious",
+    "loneliness": "depressed", "general_distress": "depressed", "low_self_esteem": "depressed",
+    "grief": "depressed", "self_isolation": "depressed",
+    "motivation_issues": "exhausted", "burnout": "exhausted", "academic_pressure": "exhausted",
+    "anger_frustration": "frustrated", "family_pressure": "frustrated", "relationship_stress": "frustrated"
 }
 
-# Context handlers
-CONTEXT_SETTERS = {
-    "panic_attack": "awaiting_panic_followup",
-    "overthinking": "awaiting_overthinking_followup",
-    "academic_pressure": "awaiting_academic_followup",
-    "family_pressure": "awaiting_family_followup",
-    "loneliness": "awaiting_loneliness_followup",
-    "motivation_issues": "awaiting_motivation_followup",
-    "sleep_problems": "awaiting_sleep_followup",
-    "burnout": "awaiting_burnout_followup"
+FOLLOWUP_BY_TAG = {
+    intent["tag"]: intent["followup"]
+    for intent in intents["intents"]
+    if "followup" in intent
 }
+CONTEXT_SETTERS = {tag: f"awaiting_{tag}_followup" for tag in FOLLOWUP_BY_TAG}
+CONTEXT_TO_TAG = {v: k for k, v in CONTEXT_SETTERS.items()}
 
 with st.sidebar:
     st.subheader("🤖 Agent Internal Model State")
-
-    st.write(
-        "This panel tracks how the Model-Based Reflex Agent builds "
-        "its perception of the conversation state over multiple turns:"
-    )
+    st.write("This panel tracks how the Model-Based Reflex Agent builds its perception of the conversation state:")
 
     state = st.session_state.agent_internal_state
-
-    st.progress(
-        min(state["emotion_counters"]["anxious"] * 25, 100),
-        text=f"Anxiety Scale: {state['emotion_counters']['anxious']}"
-    )
-
-    st.progress(
-        min(state["emotion_counters"]["depressed"] * 25, 100),
-        text=f"Depression Scale: {state['emotion_counters']['depressed']}"
-    )
-
-    st.progress(
-        min(state["emotion_counters"]["exhausted"] * 25, 100),
-        text=f"Exhaustion Scale: {state['emotion_counters']['exhausted']}"
-    )
-
-    st.progress(
-        min(state["emotion_counters"]["frustrated"] * 25, 100),
-        text=f"Frustration Scale: {state['emotion_counters']['frustrated']}"
-    )
+    st.progress(min(state["emotion_counters"]["anxious"] * 25, 100), text=f"Anxiety Scale: {state['emotion_counters']['anxious']}")
+    st.progress(min(state["emotion_counters"]["depressed"] * 25, 100), text=f"Depression Scale: {state['emotion_counters']['depressed']}")
+    st.progress(min(state["emotion_counters"]["exhausted"] * 25, 100), text=f"Exhaustion Scale: {state['emotion_counters']['exhausted']}")
+    st.progress(min(state["emotion_counters"]["frustrated"] * 25, 100), text=f"Frustration Scale: {state['emotion_counters']['frustrated']}")
 
     st.divider()
-
     st.caption(f"Active Context Token: `{st.session_state.active_context}`")
     st.caption(f"Global Dialogue Index: {state['total_conversation_turns']}")
 
     if st.button("Reset Session History & Internal State", use_container_width=True):
-
         st.session_state.messages = []
         st.session_state.active_context = None
-
         st.session_state.agent_internal_state = {
-            "emotion_counters": {
-                "anxious": 0,
-                "depressed": 0,
-                "exhausted": 0,
-                "frustrated": 0
-            },
+            "emotion_counters": {"anxious": 0, "depressed": 0, "exhausted": 0, "frustrated": 0},
             "crisis_mode_active": False,
             "total_conversation_turns": 0,
-            "has_greeted": False 
+            "has_greeted": False
         }
-
         st.rerun()
 
-# 3. Chat History Rendering
+# Render chat history
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# 4. Input Layer
+# --- CONVERSATIONAL CONTEXT LOOP ---
 if user_input := st.chat_input("Type something here..."):
-
-    # Show user message
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # Save user message
-    st.session_state.messages.append({
-        "role": "user",
-        "content": user_input
-    })
-
-    # Update turn counter
+    st.session_state.messages.append({"role": "user", "content": user_input})
     st.session_state.agent_internal_state["total_conversation_turns"] += 1
 
     reply = None
+    predicted_tag = None
+    confidence = 0.0
     cleaned_choice = user_input.strip().lower().replace(".", "").replace("!", "")
 
     with st.spinner("Processing..."):
-
         # =========================================================
-        # PHASE 1: CRISIS MODE CHECK
+        # 1. CRISIS TRIGGER GUARD
         # =========================================================
         if st.session_state.agent_internal_state["crisis_mode_active"]:
             reply = (
@@ -302,130 +302,80 @@ if user_input := st.chat_input("Type something here..."):
             )
 
         # =========================================================
-        # PHASE 2: CONTEXT STATE MACHINE (STRICT CONFIRMATION GUARD)
+        # 2. RULE-BASED NEGATION DETECTOR (BREAK THE LOOP)
         # =========================================================
+        if reply is None and user_is_correcting_bot(user_input, st.session_state.active_context):
+            st.session_state.active_context = None
+            reply = "I apologize for misinterpreting your situation. Let's start fresh. Can you tell me more about what you are currently feeling?"
+
+        # =========================================================
+        # 3a. ACTIVE CONTEXT RESOLUTION (dedicated yes/no/topic-change check)
+        # =========================================================
+        # This runs BEFORE the general 28-way intent matcher whenever the bot
+        # is mid-followup (e.g. it just offered a coping exercise). It keeps
+        # "memory" of that followup across a much wider range of phrasing
+        # than an exact "yes"/"no" match would allow.
         if reply is None and st.session_state.active_context is not None:
+            followup_tag = CONTEXT_TO_TAG.get(st.session_state.active_context)
+            followup_cfg = FOLLOWUP_BY_TAG.get(followup_tag)
 
-            if cleaned_choice in ["yes", "yeah", "yup", "haan", "ji", "no", "nah", "nope", "nahi"]:
-                
-                if st.session_state.active_context == "awaiting_panic_followup":
-                    if cleaned_choice in ["yes", "yeah", "yup", "haan", "ji"]:
-                        reply = (
-                            "Alright, let's step through a grounding exercise together. "
-                            "Press both feet firmly into the ground. "
-                            "Breathe in slowly for 4 seconds... hold... "
-                            "now breathe out for 4 seconds."
-                        )
-                    else:
-                        reply = (
-                            "I'm glad it has not escalated further. "
-                            "Let's take things slowly. "
-                            "What thoughts are bothering you most right now?"
-                        )
-                    st.session_state.active_context = None
+            if followup_cfg:
+                decision, yn_confidence = classify_yes_no(user_input, cleaned_choice)
 
-                elif st.session_state.active_context == "awaiting_overthinking_followup":
-                    if cleaned_choice in ["yes", "yeah", "yup", "haan", "ji"]:
-                        reply = "Since it's taking up a lot of space, try writing those thoughts down to get them out of your head, or break your focus with a physical change of environment."
-                    else:
-                        reply = "I'm glad it's not completely taking over your headspace right now. Remember to take things one step at a time."
+                if decision == "yes":
+                    reply = followup_cfg["yes_reply"]
+                    predicted_tag = "affirmative_response"
+                    confidence = yn_confidence
                     st.session_state.active_context = None
-
-                elif st.session_state.active_context == "awaiting_academic_followup":
-                    if cleaned_choice in ["yes", "yeah", "yup", "haan", "ji"]:
-                        reply = "Balancing studies can be overwhelming. Try breaking assignments into small blocks and taking a short break every 25 minutes."
-                    else:
-                        reply = "I'm glad you've found a rhythm that lets you manage the load without burning out completely."
+                elif decision == "no":
+                    reply = followup_cfg["no_reply"]
+                    predicted_tag = "negative_response"
+                    confidence = yn_confidence
                     st.session_state.active_context = None
-
-                elif st.session_state.active_context == "awaiting_family_followup":
-                    if cleaned_choice in ["yes", "yeah", "yup", "haan", "ji"]:
-                        reply = "Navigating those expectations can feel incredibly heavy. Remember that it's okay to protect your peace and take things one day at a time."
-                    else:
-                        reply = "I'm glad you have spaces where you feel free to express yourself outside of those expectations."
+                else:
+                    # Genuinely unclear / topic changed - release context and
+                    # let the standard flow below classify it fresh.
                     st.session_state.active_context = None
-
-                elif st.session_state.active_context == "awaiting_loneliness_followup":
-                    if cleaned_choice in ["yes", "yeah", "yup", "haan", "ji"]:
-                        reply = "Keeping things bottled up can make isolation feel twice as heavy. Thank you for sharing that with me. Remember, you don't have to navigate everything entirely on your own."
-                    else:
-                        reply = "I'm glad to hear you're able to open up sometimes. Sharing with even one trusted connection can change how you carry this weight."
-                    st.session_state.active_context = None
-
-                elif st.session_state.active_context == "awaiting_motivation_followup":
-                    if cleaned_choice in ["yes", "yeah", "yup", "haan", "ji"]:
-                        reply = "When stress completely drains your batteries, what looks like lack of motivation is often your mind demanding real rest. Be gentle with yourself today."
-                    else:
-                        reply = "If it isn't deep stress, sometimes routines just get stagnant. Try picking one microscopic, 2-minute task today to break the friction."
-                    st.session_state.active_context = None
-
-                elif st.session_state.active_context == "awaiting_sleep_followup":
-                    if cleaned_choice in ["yes", "yeah", "yup", "haan", "ji"]:
-                        reply = "When sleep routines break down, it directly intensifies daily emotional exhaustion. Try setting a screen-free winding window tonight."
-                    else:
-                        reply = "I'm glad your schedule isn't completely fractured, but struggling to clear your head at night is still an exhausting cycle."
-                    st.session_state.active_context = None
-
-                elif st.session_state.active_context == "awaiting_burnout_followup":
-                    if cleaned_choice in ["yes", "yeah", "yup", "haan", "ji"]:
-                        reply = "Taking a physical break is amazing, but your mind might still be processing heavy background tabs. Practice letting go of tasks completely for an hour."
-                    else:
-                        reply = "Pushing through without pausing is exactly how burnout seals itself in place. Try implementing a hard stop time for work tonight."
-                    st.session_state.active_context = None
+                    print("[DEBUG] Context reply was ambiguous; topic considered changed, context cleared.")
+            else:
+                st.session_state.active_context = None
 
         # =========================================================
-        # PHASE 3: MACHINE LEARNING INFERENCE WITH HISTORICAL MEMORY
+        # 3b. STANDARD SEMANTIC INTENT MATCHING
         # =========================================================
         if reply is None:
-
-            current_tokens = tokenize(user_input)
-            current_bow = bag_of_words(current_tokens, all_words)
-
-            historical_bow = np.zeros(len(all_words), dtype=np.float32)
-            user_history = [m["content"] for m in st.session_state.messages if m["role"] == "user"]
-            
-            # Bypassing historical memory loop for short user inputs
-            if len(user_history) > 1 and len(current_tokens) > 2:
-                prior_tokens = tokenize(user_history[-2])
-                historical_bow = bag_of_words(prior_tokens, all_words)
-
-            combined_bow = np.maximum(current_bow, historical_bow)
-            input_tensor = np.array([combined_bow], dtype=np.float32)
-
-            prediction = model(input_tensor, training=False).numpy()
-            highest_idx = np.argmax(prediction[0])
-            confidence = prediction[0][highest_idx]
-            predicted_tag = tags[highest_idx]
-
-            # =========================================================
-            # DETERMINISTIC OVERRIDE FOR SHORT WORDS
-            # =========================================================
+            # Deterministic override for common conversational responses typed
+            # in isolation (i.e. NOT inside an active followup, which is
+            # handled above by classify_yes_no instead).
             SHORT_WORD_ROUTER = {
-                "yes": "affirmative_response", "yeah": "affirmative_response", "yup": "affirmative_response", "haan": "affirmative_response", "ji": "affirmative_response",
+                "yes": "affirmative_response", "yeah": "affirmative_response", "yup": "affirmative_response",
+                "haan": "affirmative_response", "ji": "affirmative_response", "sure": "affirmative_response",
                 "no": "negative_response", "nah": "negative_response", "nope": "negative_response", "nahi": "negative_response",
-                "okay": "neutral_acknowledgment", "ok": "neutral_acknowledgment", "nothing": "neutral_acknowledgment", "what": "neutral_acknowledgment", "jee": "neutral_acknowledgment", 
-                "good": "neutral_acknowledgment", "fine": "neutral_acknowledgment"
+                "okay": "neutral_acknowledgment", "ok": "neutral_acknowledgment", "nothing": "neutral_acknowledgment"
             }
-            
+
             if cleaned_choice in SHORT_WORD_ROUTER:
                 predicted_tag = SHORT_WORD_ROUTER[cleaned_choice]
-                confidence = 1.0  # Force it to 100% so it passes the interceptor guard
+                confidence = 1.0
+                matched_intent = next((intent for intent in intents["intents"] if intent["tag"] == predicted_tag), None)
+            else:
+                matched_intent, confidence = matcher.match(user_input)
+                predicted_tag = matched_intent["tag"] if matched_intent else None
 
-            print(f"[DEBUG] Processing Input: '{user_input}' | Prior Context state: {st.session_state.active_context}")
-            print(f"[DEBUG] ML Predicted Tag: '{predicted_tag}' | Confidence score: {confidence:.2f}")
+            print(f"[DEBUG] Input: '{user_input}' | Prior Context: {st.session_state.active_context}")
+            print(f"[DEBUG] Best Semantic Match: Tag='{predicted_tag}' | Confidence Score: {confidence:.2f}")
 
+            # Handle false positive "goodbye" triggers on inputs like "leave"
             is_explicit_farewell = any(word in cleaned_choice for word in ["bye", "goodbye", "leave", "going", "allah hafiz", "khuda hafiz", "exit"])
             if predicted_tag == "goodbye" and not is_explicit_farewell:
                 confidence = 0.10
 
-            # Strict low-confidence and empty array interceptor
-            if confidence < 0.38 or (np.sum(combined_bow) == 0 and cleaned_choice not in SHORT_WORD_ROUTER):
-                reply = random.choice([
-                    "I'm not sure I understand that. Could you tell me a little more about what's on your mind?",
-                    "I want to make sure I understand you properly, but I didn't quite catch that. What's been going on?",
-                    "I'm not sure I understand. If things are feeling heavy or complicated, take your time expressing them."
+            if confidence < 0.42:
+                # Fallback triggers
+                fallback_pool = intents.get("fallback_responses", [
+                    "I hear you, but I want to make sure I understand correctly. Could you describe how you're feeling a bit differently?"
                 ])
-                st.session_state.active_context = None
+                reply = random.choice(fallback_pool)
             else:
                 if predicted_tag in ["greeting", "islamic_greeting"]:
                     if st.session_state.agent_internal_state["has_greeted"]:
@@ -434,55 +384,39 @@ if user_input := st.chat_input("Type something here..."):
                             "I'm listening. Tell me more about how you've been doing.",
                             "I'm here. Whenever you're ready, feel free to share what's going on."
                         ])
-                        st.session_state.active_context = None
                     else:
-                        for intent in intents['intents']:
-                            if intent['tag'] == predicted_tag:
-                                reply = random.choice(intent['responses'])
-                                break
+                        reply = random.choice(matched_intent['responses'])
                         st.session_state.agent_internal_state["has_greeted"] = True
-                else:
-                    for intent in intents['intents']:
-                        if intent['tag'] == predicted_tag:
-                            reply = random.choice(intent['responses'])
-                            break
 
-                # =================================================
-                # PHASE 4: UPDATE INTERNAL AGENT STATE & CONTEXT CLEAR
-                # =================================================
-                
-                # DETERMINISTIC OVERRIDE: Fixes the bug where "depressed" accidentally hits the anxiety scale
-                explicit_depressed_keywords = ["depressed", "depression", "sad", "hopeless", "lonely", "isolated"]
-                if any(word in cleaned_choice.split() for word in explicit_depressed_keywords):
-                    target_dimension = "depressed"
-                elif predicted_tag in EMOTION_TAG_ROUTING:
-                    target_dimension = EMOTION_TAG_ROUTING[predicted_tag]
-                else:
-                    target_dimension = None
-
-                if target_dimension:
-                    st.session_state.agent_internal_state["emotion_counters"][target_dimension] += 1
-
-                if predicted_tag == "crisis_support":
-                    st.session_state.agent_internal_state["crisis_mode_active"] = True
-
-                if predicted_tag in CONTEXT_SETTERS:
+                elif predicted_tag in FOLLOWUP_BY_TAG:
+                    # Set context and prompt the user
+                    reply = FOLLOWUP_BY_TAG[predicted_tag]["prompt"]
                     st.session_state.active_context = CONTEXT_SETTERS[predicted_tag]
-                    print(f"[DEBUG] Context switched to: {st.session_state.active_context}")
-                else:
-                    st.session_state.active_context = None
-                    print("[DEBUG] Context Cleared (Topic Shifted Successfully)")
+                    print(f"[DEBUG] Context set to: {st.session_state.active_context}")
 
-    # =========================================================
-    # ASSISTANT RESPONSE RENDERING
-    # =========================================================
+                else:
+                    reply = random.choice(matched_intent['responses'])
+
+        # =========================================================
+        # 4. AGENT STATE UPDATE
+        # =========================================================
+        explicit_depressed_keywords = ["depressed", "depression", "sad", "hopeless", "lonely", "isolated"]
+        if any(word in cleaned_choice.split() for word in explicit_depressed_keywords):
+            target_dimension = "depressed"
+        elif predicted_tag in EMOTION_TAG_ROUTING:
+            target_dimension = EMOTION_TAG_ROUTING[predicted_tag]
+        else:
+            target_dimension = None
+
+        if target_dimension:
+            st.session_state.agent_internal_state["emotion_counters"][target_dimension] += 1
+
+        if predicted_tag == "crisis_support":
+            st.session_state.agent_internal_state["crisis_mode_active"] = True
+
+    # Render Assistant Output
     with st.chat_message("assistant"):
         st.markdown(reply)
 
-    # Save assistant response
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": reply
-    })
-
+    st.session_state.messages.append({"role": "assistant", "content": reply})
     st.rerun()

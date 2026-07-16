@@ -141,6 +141,58 @@ def classify_yes_no(user_input, cleaned_choice):
 
 
 # =========================================================
+# DETERMINISTIC CRISIS / SELF-HARM SAFETY NET
+# =========================================================
+# Why this exists:
+# Previously, crisis language was only caught by the general semantic
+# matcher, AFTER context resolution ran. That meant if the bot was mid-way
+# through a followup (e.g. "Would you like to try a grounding exercise?")
+# and the user's reply contained both a "no" and something like "I just
+# want it to end", the yes/no resolver would grab the "no" and reply with
+# ordinary followup text -- completely missing the crisis disclosure.
+#
+# This check is a deterministic keyword net (not embedding similarity) run
+# as the very FIRST thing on every turn, before the context resolver, the
+# negation-correction layer, or the general intent matcher. Embedding
+# confidence thresholds are useful for everyday conversation, but they are
+# not something to gate safety-critical detection behind -- a keyword net
+# is slower to adapt to novel phrasing, but it never "almost" catches
+# something this important.
+CRISIS_KEYWORDS = [
+    "kill myself", "killing myself", "suicide", "suicidal",
+    "end my life", "ending my life", "ended my life",
+    "want to die", "wanna die", "wish i was dead", "wish i were dead",
+    "better off dead", "no reason to live", "not want to live",
+    "don't want to live", "do not want to live",
+    "can't go on", "cant go on", "cannot go on",
+    "take my own life", "taking my own life",
+    "hurt myself", "hurting myself", "harm myself", "harming myself",
+    "self harm", "self-harm", "selfharm",
+    "cutting myself", "cut myself",
+    "give up on life", "giving up on life",
+    "no point in living", "no point living",
+    "ending it all", "end it all", "not want to be alive", "don't want to be alive",
+    "want it to end", "want this to end", "i want to end it", "make it stop",
+    "want my life to end", "life to end", "tired of living", "tired of being alive",
+]
+
+CRISIS_RESPONSE = (
+    "I'm really glad you told me this, and I want to take it seriously. "
+    "You don't have to go through this alone. Please reach out to the Umang "
+    "Mental Health Helpline at 0311-7786264 -- it's free, confidential, and "
+    "available 24/7. If you are in immediate danger, please call 1122 "
+    "(Rescue) right now or get to someone who can be physically with you. "
+    "For safety, this chat will pause other topics -- please use one of the "
+    "resources above."
+)
+
+
+def detect_crisis_language(cleaned_choice):
+    """Deterministic substring check for self-harm / suicide disclosures."""
+    return any(kw in cleaned_choice for kw in CRISIS_KEYWORDS)
+
+
+# =========================================================
 # NLTK RULE-BASED NEGATION LAYER (ESCAPE HATCH)
 # =========================================================
 def user_is_correcting_bot(user_input, active_context):
@@ -300,6 +352,19 @@ if user_input := st.chat_input("Type something here..."):
                 "the Umang Helpline at 0311-7786264 immediately. "
                 "For safety purposes, active chatbot configurations are suspended."
             )
+
+        # =========================================================
+        # 1.5 DETERMINISTIC CRISIS / SELF-HARM CHECK (runs before ANYTHING else,
+        #     including the active-context resolver, so a crisis disclosure can
+        #     never get swallowed by a pending yes/no followup)
+        # =========================================================
+        if reply is None and detect_crisis_language(cleaned_choice):
+            st.session_state.active_context = None
+            st.session_state.agent_internal_state["crisis_mode_active"] = True
+            predicted_tag = "crisis_support"
+            confidence = 1.0
+            reply = CRISIS_RESPONSE
+            print("[DEBUG] Deterministic crisis keyword match -- crisis mode activated.")
 
         # =========================================================
         # 2. RULE-BASED NEGATION DETECTOR (BREAK THE LOOP)

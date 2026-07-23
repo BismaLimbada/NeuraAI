@@ -3,3 +3,4 @@ tensorflow>=2.18.0,<2.21.0
 tensorflow-hub>=0.16.1
 numpy>=2.0.0,<2.2.0
 nltk>=3.8.1
+setuptools<81

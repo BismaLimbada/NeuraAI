@@ -1,54 +1,59 @@
 # 🌸 Neura AI
 
-Neura AI is an empathetic, context-aware chatbot framework built to support mental health awareness. Powered by a Model-Based Reflex Agent architecture implemented via TensorFlow, NLTK, and Streamlit, the system actively monitors and logs conversational state dynamics, tracked emotional progressions, and strict context-driven verification loops over multi-turn exchanges.
+Neura AI is an empathetic, context-aware chatbot framework built to support mental health awareness. It combines a semantic sentence-embedding classification engine with a Model-Based Reflex Agent architecture, implemented with TensorFlow, NLTK, and Streamlit, to maintain conversational state, track emotional progression, and manage multi-turn dialogue safely.
 
-> **Status:** 🚀 Live Deployment Active
+**Status:** Live Deployment Active
 
-An empathetic, context-aware Model-Based Reflex Agent framework designed for mental health awareness, emotional scaling, and supportive dialogue.
-
-### 🔗 Quick Links
+### Quick Links
 * **Live Web Application:** [neuraai.streamlit.app](https://neuraai.streamlit.app/)
 * **Development Repository:** [GitHub Root](https://github.com/BismaLimbada/ChatBot)
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
-* **Model-Based Reflex Agent State:** Tracks conversational contexts dynamically across user exchanges using localized historical context vectors.
-* **Semantic Intent Matching:** Uses Universal Sentence Encoder (USE) sentence embeddings instead of exact word overlap, so the agent recognizes paraphrases it never saw during training (e.g. "my mind won't quit racing" vs. "I overthink everything").
-* **Dedicated Context Yes/No Resolver:** When a followup is active (e.g. offering a grounding exercise), a focused keyword + semantic-anchor check decides agreement / disagreement / topic-change — rather than re-running the full intent classifier, which used to lose track of the active followup on any reply that wasn't an exact "yes"/"no".
-* **Deterministic Crisis / Self-Harm Safety Net:** A keyword check for suicidal ideation and self-harm disclosures now runs *before* anything else on every turn — including before the context resolver above — so a crisis disclosure can never get swallowed by a pending yes/no followup. A match immediately clears context, locks the chat into crisis mode, and returns the Umang Helpline (0311-7786264) and Pakistan's Rescue emergency number (1122).
-* **Greeting Duplication Prevention:** Tracks state variables under-the-hood to identify initial greetings, ensuring the agent provides supportive, conversational replies instead of generic introductory messages if a greeting tag is triggered mid-dialogue.
-* **Context State Machine Loops:** Employs explicit guard structures to seamlessly process confirmations (e.g., grounding rules, sleep advice, or burnout recovery tasks) before moving to generic fallback or deep semantic matching.
-* **Smart Fallback Management:** Gracefully flags unrecognized inputs or text scoring below the similarity confidence limit, keeping conversations grounded and safe.
-
----
-
-## 🛠️ Pipeline Architecture
-
-The core interactive processing script operates sequentially:
-
-1. **Phase 0: Deterministic Crisis / Self-Harm Check** – Runs first, before anything else, on every single turn regardless of conversation state. A substring keyword check scans for suicidal ideation or self-harm disclosures; a match immediately clears any pending followup context, activates crisis-lockout mode, and returns a fixed response with the Umang Helpline and emergency contact info. This intentionally sits *ahead* of context resolution (Phase 2) so a crisis disclosure inside a followup reply can't be misread as a plain "yes"/"no".
-2. **Phase 1: Crisis Lockout & Correction Guards** – If crisis mode is already active, the lockout message repeats. Otherwise, the pipeline checks whether the user is correcting a misclassified context (e.g. "no I didn't mean that") via an NLTK negation/keyword check.
-3. **Phase 2: Context Memory Validation** – If `st.session_state.active_context` is open, the input is routed to a dedicated yes/no/topic-change resolver *before* the general intent matcher runs. This resolver first checks an expanded keyword table (substring match, English + Roman Urdu), then falls back to cosine similarity against a small set of agreement/disagreement anchor phrases — deliberately kept separate from the full 28-intent matcher so short replies aren't diluted by unrelated categories. Only if neither signal is clear does the context release and fall through to standard classification.
-4. **Phase 3: Sentence Embedding & Semantic Matching** – Raw input text is embedded in full (not tokenized into a bag-of-words) using Google's Universal Sentence Encoder via TensorFlow Hub, producing a 512-dimension vector. This is compared via cosine similarity against precomputed embeddings of every pattern in `intents.json`; the closest match above a 0.42 confidence floor determines the predicted tag. NLTK tokenization/stemming is retained only for the lightweight short-word router and the negation-correction layer above — it no longer feeds the main classifier.
-5. **Phase 4: Multi-Turn State Management** – Based on matching confidence thresholds, it triggers empathetic intent templates, updates runtime emotion-tracking counters, or sets new tracking milestones inside `st.session_state.active_context`.
-
-> **Note on `train_model.py` / `mental_health_model.keras`:** the training script compiles a feedforward Keras classifier (Dense 128 → Dropout → Dense 64 → Dropout → Softmax) over the same USE embeddings. `app.py` currently performs inference via direct nearest-neighbor cosine similarity against pattern embeddings rather than loading this trained model — the two are not yet wired together. Worth resolving before final submission so the report and the running app describe the same classification path.
+* **Semantic Intent Matching** — Uses Universal Sentence Encoder (USE) sentence embeddings rather than exact word overlap, allowing the agent to recognize paraphrased input it never saw during training.
+* **Deterministic Crisis & Self-Harm Safety Net** — A keyword-based check for suicidal ideation and self-harm disclosures runs first, on every turn, ahead of all other logic. A match clears any pending conversational context, activates a crisis lockout, and returns mental health helpline and emergency contact information.
+* **Contextual Yes/No Resolution** — When a followup is active (e.g. offering a coping exercise), a dedicated keyword and semantic-anchor check determines agreement, disagreement, or topic change, independent of the general intent classifier.
+* **Model-Based Reflex Agent State** — Tracks conversational context and emotional signals dynamically across the session using persistent state buffers.
+* **Greeting Duplication Prevention** — Detects repeat greetings mid-conversation and responds conversationally instead of reintroducing itself.
+* **Smart Fallback Management** — Gracefully handles unrecognized input or low-confidence matches with a structured fallback response.
 
 ---
 
-## 📂 Project Structure
+## Pipeline Architecture
+
+The core processing pipeline evaluates each user turn in the following order:
+
+1. **Crisis & Self-Harm Detection** — A deterministic keyword check scans for suicidal ideation or self-harm language. A match immediately clears any active context, enables crisis lockout mode, and returns helpline information. This step runs before context resolution so a crisis disclosure cannot be absorbed by a pending followup question.
+2. **Crisis Lockout & Correction Guards** — If crisis mode is already active, the lockout response is shown. Otherwise, an NLTK-based negation check detects whether the user is correcting a misclassified context.
+3. **Context Resolution** — If a followup context is open, the reply is classified as agreement, disagreement, or topic change using a keyword table and semantic anchor comparison, rather than the full intent classifier.
+4. **Semantic Intent Matching** — Input is embedded using the Universal Sentence Encoder and compared via cosine similarity against precomputed pattern embeddings from `intents.json`. The closest match above a 0.42 confidence threshold determines the response.
+5. **State Management** — Based on the matched intent and confidence, the agent updates emotion-tracking counters, sets new followup context, or returns to standard conversation.
+
+---
+
+## Technology Stack
+
+* **Python** — Core application logic
+* **TensorFlow / TensorFlow Hub** — Universal Sentence Encoder for semantic embeddings
+* **NLTK** — Tokenization, stemming, and rule-based negation detection
+* **Streamlit** — Web interface and session state management
+* **NumPy** — Vector operations for similarity scoring
+
+---
+
+## Project Structure
 
 ```text
 ├── data/
-│   └── intents.json           # Structural dataset containing tags, patterns, responses, and followup prompts
-├── .gitignore                 # Specifies intentionally untracked build files to ignore
-├── README.md                  # Project documentation overview
-├── app.py                     # Main Streamlit user interface, semantic matching, context resolver, & state tracking
-├── data_mappings.json          # Compiled tag list only (no vocabulary needed — inference re-embeds raw sentences)
-├── preprocess.py               # USE sentence embedding, plus lightweight tokenization/stemming for routing & negation checks
-├── requirements.txt            # Project environment dependencies
-├── train_data.py               # Embeds intents.json patterns with USE for training
-└── train_model.py              # Feedforward neural network compilation and training routine script
+│   └── intents.json           # Tags, patterns, responses, and followup prompts
+├── .gitignore
+├── README.md
+├── app.py                     # Streamlit interface, semantic matching, and state management
+├── data_mappings.json          # Registered tag list
+├── preprocess.py               # Sentence embedding, tokenization, and stemming utilities
+├── requirements.txt
+├── train_data.py               # Embeds intents.json patterns for training
+└── train_model.py              # Neural network training routine
 ```
